@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1015">
+<title>SameGame</title>
+<style>
+  :root {
+    --bg: #0d1015;
+    --bg2: #121722;
+    --panel: #161d28;
+    --panel2: #1c2431;
+    --line: #263041;
+    --text: #e7ecf3;
+    --muted: #8b97a8;
+    --accent: #4aa8ff;
+    --good: #3ddc97;
+    --radius: 14px;
+    --shadow: 0 18px 40px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background:
+      radial-gradient(1200px 700px at 20% -10%, #1a2333 0%, transparent 60%),
+      radial-gradient(900px 600px at 110% 110%, #16202e 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font: 400 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    min-height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  header.title {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    display: grid;
+    grid-template-columns: repeat(3, 10px);
+    grid-auto-rows: 10px;
+    gap: 3px;
+  }
+  .logo i { border-radius: 3px; display: block; }
+
+  h1 {
+    font-size: 20px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin: 0;
+    font-weight: 650;
+  }
+  h1 span { color: var(--muted); font-weight: 500; }
+
+  .board-wrap {
+    position: relative;
+    background: linear-gradient(180deg, var(--panel) 0%, #131a24 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 340px;
+  }
+
+  canvas { display: block; touch-action: manipulation; }
+
+  .overlay {
+    position: absolute;
+    inset: 14px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 14, 20, .72);
+    backdrop-filter: blur(6px);
+    border-radius: 10px;
+  }
+  .overlay.show { display: flex; }
+  .overlay .card {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 26px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+    max-width: 340px;
+  }
+  .overlay h2 { margin: 0 0 6px; font-size: 18px; }
+  .overlay p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+  aside.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .stat .k { color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .stat .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .stat .v.flash { animation: flash .45s ease; }
+  @keyframes flash { 0% { transform: scale(1.12); color: var(--accent); } 100% { transform: scale(1); } }
+
+  .hintline {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--muted);
+    font-size: 13px;
+    min-height: 44px;
+  }
+  .hintline b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  button, select {
+    font: inherit;
+    color: var(--text);
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  }
+  button:hover:not(:disabled) { background: #222c3b; border-color: #334054; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #081018; font-weight: 650; }
+  button.primary:hover { background: #63b8ff; }
+  button.toggled { border-color: var(--good); color: var(--good); }
+  select { appearance: none; padding-right: 26px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+  .rules {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .rules code { color: var(--text); background: #222c3b; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .rules kbd {
+    background: #222c3b; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 6px; padding: 2px 6px; font: 500 12px ui-monospace, monospace; color: var(--text);
+  }
+
+  .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; padding: 14px; }
+    aside.panel { order: 2; }
+    .board-wrap { order: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="title">
+    <div class="logo" id="logo"></div>
+    <h1>SameGame <span>· clickomania</span></h1>
+  </header>
+
+  <div class="board-wrap">
+    <canvas id="board" aria-label="SameGame board"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="card">
+        <h2 id="ovTitle">No moves left</h2>
+        <p id="ovText">Score 0 · 120 blocks remaining</p>
+        <button class="primary" id="ovBtn">New game</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="stats">
+      <div class="stat"><div class="k">Score</div><div class="v" id="score">0</div></div>
+      <div class="stat"><div class="k">Best</div><div class="v" id="best">0</div></div>
+      <div class="stat"><div class="k">Moves</div><div class="v" id="moves">0</div></div>
+      <div class="stat"><div class="k">Blocks</div><div class="v" id="left">0</div></div>
+    </div>
+
+    <div class="hintline" id="hintline">Click a group of <b>2+</b> touching blocks to pop it.</div>
+
+    <div class="controls">
+      <button class="primary" id="btnNew">New game</button>
+      <button id="btnUndo" disabled>Undo</button>
+      <button id="btnHint">Hint</button>
+      <button id="btnShuffle">Shuffle</button>
+      <button id="btnSound" class="toggled">Sound on</button>
+    </div>
+
+    <div class="controls">
+      <select id="selSize">
+        <option value="10,6">10 × 6</option>
+        <option value="15,8" selected>15 × 8 (classic)</option>
+        <option value="20,12">20 × 12</option>
+      </select>
+      <select id="selColors">
+        <option value="4">4 colors</option>
+        <option value="5" selected>5 colors</option>
+        <option value="6">6 colors</option>
+      </select>
+    </div>
+
+    <div class="rules">
+      <p style="margin:0 0 8px">Pop groups of same-colour blocks. Blocks fall down, empty columns slide left. Score for a group of <code>n</code> is <code>n × (n − 1)</code>; clearing the board adds <code>2000</code>.</p>
+      <div class="keys">
+        <kbd>N</kbd><kbd>U</kbd><kbd>H</kbd><kbd>S</kbd><kbd>M</kbd>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ------------------------------------------------------------------ *
+   * Palette
+   * ------------------------------------------------------------------ */
+  const parseHex = (h) => {
+    const n = parseInt(h.slice(1), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  };
+
+  const PALETTE = [
+    { name: 'red',    hex: '#ff5f6d' },
+    { name: 'amber',  hex: '#f7b32b' },
+    { name: 'green',  hex: '#3ddc97' },
+    { name: 'blue',   hex: '#4aa8ff' },
+    { name: 'violet', hex: '#b388ff' },
+    { name: 'teal',   hex: '#2fd4c8' },
+  ].map(p => ({ ...p, rgb: parseHex(p.hex) }));
+
+  const cfg = { cols: 15, rows: 8, colors: 5 };
+
+  const state = {
+    grid: [],           // grid[r][c] -> cell | null
+    score: 0,
+    best: 0,
+    moves: 0,
+    hover: [],
+    hint: null,
+    popping: [],
+    particles: [],
+    popups: [],
+    undo: [],
+    phase: 'idle',      // idle | pop | settle
+    tPop: 0, tSettle: 0,
+    sound: true,
+    over: false,
+    seedKey: '',
+  };
+
+  const POP_MS = 170, SETTLE_MS = 280;
+  const BONUS = 2000;
+
+  const cv = document.getElementById('board');
+  const ctx = cv.getContext('2d');
+  const el = {
+    score: document.getElementById('score'),
+    best: document.getElementById('best'),
+    moves: document.getElementById('moves'),
+    left: document.getElementById('left'),
+    hintline: document.getElementById('hintline'),
+    overlay: document.getElementById('overlay'),
+    ovTitle: document.getElementById('ovTitle'),
+    ovText: document.getElementById('ovText'),
+    ovBtn: document.getElementById('ovBtn'),
+    undo: document.getElementById('btnUndo'),
+    logo: document.getElementById('logo'),
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Helpers
+   * ------------------------------------------------------------------ */
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+  const easeInCubic = t => t * t * t;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rgb = (c, a = 1) => `rgba(${c.r},${c.g},${c.b},${a})`;
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Board model
+   * ------------------------------------------------------------------ */
+  function newCell(color, r, c) {
+    return { color, r, c, dx: 0, dy: 0, scale: 1, alpha: 1, rot: 0, born: 0 };
+  }
+
+  function newGame(animateIn = true) {
+    state.grid = Array.from({ length: cfg.rows }, () => new Array(cfg.cols).fill(null));
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        const cell = newCell(Math.floor(Math.random() * cfg.colors), r, c);
+        if (animateIn) { cell.dy = -0.35 - Math.random() * 0.25; }
+        state.grid[r][c] = cell;
+      }
+    }
+    state.score = 0; state.moves = 0; state.over = false;
+    state.hover = []; state.hint = null; state.popping = []; state.particles = []; state.popups = [];
+    state.undo = [];
+    state.phase = animateIn ? 'settle' : 'idle';
+    state.tSettle = performance.now();
+    state.best = loadBest();
+    state.over = false;
+    hideOverlay();
+    syncHud();
+  }
+
+  function findGroup(r, c) {
+    const cell = state.grid[r]?.[c];
+    if (!cell) return [];
+    const color = cell.color;
+    const seen = new Set([r + ':' + c]);
+    const stack = [[r, c]], out = [];
+    while (stack.length) {
+      const [cr, cc] = stack.pop();
+      out.push(state.grid[cr][cc]);
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nr = cr + dr, nc = cc + dc;
+        if (nr < 0 || nc < 0 || nr >= cfg.rows || nc >= cfg.cols) continue;
+        const n = state.grid[nr][nc];
+        if (n && n.color === color && !seen.has(nr + ':' + nc)) {
+          seen.add(nr + ':' + nc);
+          stack.push([nr, nc]);
+        }
+      }
+    }
+    return out;
+  }
+
+  function largestGroup() {
+    let best = [];
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        if (!state.grid[r][c]) continue;
+        const g = findGroup(r, c);
+        if (g.length > best.length) best = g;
+      }
+    }
+    return best;
+  }
+
+  function blocksLeft() {
+    let n = 0;
+    for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) if (state.grid[r][c]) n++;
+    return n;
+  }
+
+  function collapse() {
+    const g = state.grid;
+    // gravity: pack each column to the bottom
+    for (let c = 0; c < cfg.cols; c++) {
+      let write = cfg.rows - 1;
+      for (let r = cfg.rows - 1; r >= 0; r--) {
+        const cell = g[r][c];
+        if (!cell) continue;
+        if (r !== write) { g[r][c] = null; g[write][c] = cell; cell.dy = r - write; }
+        else cell.dy = 0;
+        write--;
+      }
+    }
+    // columns: drop empties, slide left
+    const live = [];
+    for (let c = 0; c < cfg.cols; c++) {
+      let any = false;
+      for (let r = 0; r < cfg.rows; r++) if (g[r][c]) { any = true; break; }
+      if (any) live.push(c);
+    }
+    const ng = Array.from({ length: cfg.rows }, () => new Array(cfg.cols).fill(null));
+    live.forEach((src, idx) => {
+      for (let r = 0; r < cfg.rows; r++) {
+        const cell = g[r][src];
+        if (!cell) continue;
+        cell.dx = src - idx;
+        ng[r][idx] = cell;
+      }
+    });
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        const cell = ng[r][c];
+        if (cell) { cell.r = r; cell.c = c; }
+      }
+    }
+    state.grid = ng;
+  }
+
+  function snapshot() {
+    state.undo.push({
+      grid: state.grid.map(row => row.map(cell => cell ? { color: cell.color, r: cell.r, c: cell.c } : null)),
+      score: state.score, moves: state.moves,
+    });
+    if (state.undo.length > 30) state.undo.shift();
+    el.undo.disabled = state.undo.length === 0;
+  }
+
+  function undo() {
+    const s = state.undo.pop();
+    if (!s) return;
+    state.grid = s.grid.map(row => row.map(cell => cell ? { ...newCell(cell.color, cell.r, cell.c), born: performance.now() } : null));
+    for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+      const cell = state.grid[r][c];
+      if (cell) cell.dy = -0.18;
+    }
+    state.score = s.score; state.moves = s.moves; state.over = false;
+    state.hover = []; state.hint = null; state.popping = [];
+    state.phase = 'settle'; state.tSettle = performance.now();
+    hideOverlay(); syncHud();
+    tone(300, .1, .12, 'sine');
+    el.undo.disabled = state.undo.length === 0;
+  }
+
+  function shuffle() {
+    const cells = [];
+    for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) if (state.grid[r][c]) cells.push(state.grid[r][c]);
+    if (cells.length < 2) return;
+    const colors = cells.map(c => c.color);
+    for (let i = colors.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [colors[i], colors[j]] = [colors[j], colors[i]];
+    }
+    cells.forEach((cell, i) => {
+      cell.color = colors[i];
+      cell.dx = 0; cell.dy = 0; cell.scale = 0.6; cell.alpha = 0.6;
+    });
+    state.phase = 'settle'; state.tSettle = performance.now();
+    state.over = false; hideOverlay();
+    tone(180, .18, .1, 'triangle');
+    syncHud();
+    if (largestGroup().length < 2) { endGame(); }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Scoring & moves
+   * ------------------------------------------------------------------ */
+  function popGroup(group) {
+    if (group.length < 2 || state.phase !== 'idle') return;
+    snapshot();
+    const n = group.length;
+    const gained = n * (n - 1);
+    state.score += gained;
+    state.moves++;
+
+    for (const cell of group) {
+      state.grid[cell.r][cell.c] = null;
+      state.popping.push({
+        color: cell.color, r: cell.r, c: cell.c,
+        x: cell.c, y: cell.r, rot: (Math.random() - .5) * 0.6,
+        born: performance.now(),
+      });
+    }
+
+    const cx = group.reduce((s, g) => s + g.c, 0) / n;
+    const cy = group.reduce((s, g) => s + g.r, 0) / n;
+    state.popups.push({ x: cx, y: cy, text: '+' + gained, born: performance.now(), color: group[0].color });
+    burst(cx, cy, group[0].color, Math.min(n, 14));
+
+    state.phase = 'pop'; state.tPop = performance.now();
+    tone(180 + n * 34, .16, .16, 'triangle');
+    syncHud();
+  }
+
+  function burst(x, y, colorIdx, count) {
+    const col = PALETTE[colorIdx];
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, s = 0.04 + Math.random() * 0.09;
+      state.particles.push({
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.05,
+        life: 1, decay: 0.012 + Math.random() * 0.02,
+        size: 2 + Math.random() * 3, color: col.rgb,
+      });
+    }
+  }
+
+  function endGame() {
+    if (state.over) return;
+    state.over = true;
+    const left = blocksLeft();
+    if (left === 0) {
+      state.score += BONUS;
+      el.ovTitle.textContent = 'Board cleared!';
+      el.ovText.textContent = `+${BONUS} bonus · total ${state.score}`;
+      jingle();
+    } else {
+      el.ovTitle.textContent = 'No moves left';
+      el.ovText.textContent = `Score ${state.score} · ${left} blocks remaining`;
+    }
+    if (state.score > state.best) { state.best = state.score; saveBest(); }
+    el.overlay.classList.add('show');
+    syncHud();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Persistence
+   * ------------------------------------------------------------------ */
+  const key = () => `samegame.best.${cfg.cols}x${cfg.rows}.${cfg.colors}`;
+  function loadBest() { try { return Number(localStorage.getItem(key()) || 0); } catch { return 0; } }
+  function saveBest() { try { localStorage.setItem(key(), String(state.best)); } catch {} }
+
+  /* ------------------------------------------------------------------ *
+   * Audio
+   * ------------------------------------------------------------------ */
+  let actx = null;
+  function audio() {
+    if (!actx) {
+      try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, gain, type = 'triangle') {
+    if (!state.sound) return;
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(gain, a.currentTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    o.connect(g).connect(a.destination);
+    o.start(); o.stop(a.currentTime + dur + 0.02);
+  }
+  function jingle() {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .35, .14, 'triangle'), i * 110));
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Layout / rendering
+   * ------------------------------------------------------------------ */
+  let cell = 34, pad = 12, dpr = 1;
+
+  function layout() {
+    const wrap = document.querySelector('.board-wrap');
+    const availW = wrap.clientWidth - 28;
+    const availH = Math.max(220, window.innerHeight - 230);
+    cell = Math.floor(Math.min(availW / cfg.cols, availH / cfg.rows));
+    cell = clamp(cell, 16, 44);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = cfg.cols * cell + pad * 2, h = cfg.rows * cell + pad * 2;
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  const px = (c, off = 0) => pad + (c + off) * cell;
+  const py = (r, off = 0) => pad + (r + off) * cell;
+
+  function drawBlock(x, y, size, colorIdx, opts = {}) {
+    const col = PALETTE[colorIdx];
+    const r = size * 0.18;
+    ctx.save();
+    if (opts.glow) {
+      ctx.shadowColor = rgb(col.rgb, .55);
+      ctx.shadowBlur = opts.glow;
+    }
+    roundRect(x, y, size, size, r);
+    ctx.fillStyle = rgb(col.rgb, opts.alpha ?? 1);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // top-left light
+    const g = ctx.createLinearGradient(x, y, x + size * 0.6, y + size * 0.7);
+    g.addColorStop(0, 'rgba(255,255,255,.28)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    roundRect(x, y, size, size, r);
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    // bottom-right shade
+    const s = ctx.createLinearGradient(x, y + size * 0.4, x + size, y + size);
+    s.addColorStop(0, 'rgba(0,0,0,0)');
+    s.addColorStop(1, 'rgba(0,0,0,.22)');
+    roundRect(x, y, size, size, r);
+    ctx.fillStyle = s;
+    ctx.fill();
+
+    if (opts.hover) {
+      roundRect(x, y, size, size, r);
+      ctx.strokeStyle = 'rgba(255,255,255,.75)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function render(now) {
+    ctx.clearRect(0, 0, cv.width / dpr, cv.height / dpr);
+
+    // board backdrop
+    ctx.fillStyle = 'rgba(255,255,255,.035)';
+    roundRect(4, 4, cv.width / dpr - 8, cv.height / dpr - 8, 10);
+    ctx.fill();
+
+    // ghost grid
+    ctx.fillStyle = 'rgba(255,255,255,.045)';
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        if (state.grid[r][c]) continue;
+        roundRect(px(c) + 1, py(r) + 1, cell - 2, cell - 2, cell * 0.16);
+        ctx.fill();
+      }
+    }
+
+    const settleP = state.phase === 'settle' ? clamp((now - state.tSettle) / SETTLE_MS, 0, 1) : 1;
+    const hoverSet = new Set(state.hover);
+    const hintSet = new Set(state.hint || []);
+    const pulse = 0.5 + 0.5 * Math.sin(now / 220);
+
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        const b = state.grid[r][c];
+        if (!b) continue;
+        const e = easeOutCubic(settleP);
+        const dx = b.dx * (1 - e), dy = b.dy * (1 - e);
+        const isHover = hoverSet.has(b), isHint = hintSet.has(b);
+        const bump = isHover ? 0.06 * (0.6 + 0.4 * pulse) : isHint ? 0.05 * (0.6 + 0.4 * pulse) : 0;
+        const bornP = clamp((now - b.born) / 220, 0, 1);
+        const scale = (b.scale + (1 - b.scale) * easeOutCubic(bornP)) + bump;
+        const alpha = b.alpha + (1 - b.alpha) * bornP;
+        const size = cell * scale;
+        const x = px(c, dx) + (cell - size) / 2;
+        const y = py(r, dy) + (cell - size) / 2;
+        drawBlock(x, y, size, b.color, {
+          hover: isHover || isHint,
+          glow: isHover ? 12 : isHint ? 10 * pulse : 0,
+          alpha,
+        });
+      }
+    }
+
+    // popping blocks
+    const popP = state.phase === 'pop' ? clamp((now - state.tPop) / POP_MS, 0, 1) : 1;
+    for (const p of state.popping) {
+      const t = clamp((now - p.born) / POP_MS, 0, 1);
+      const k = easeInCubic(t);
+      const size = cell * (1 - k);
+      if (size <= 0.5) continue;
+      ctx.save();
+      ctx.globalAlpha = 1 - k;
+      ctx.translate(px(p.x) + cell / 2, py(p.y) + cell / 2);
+      ctx.rotate(p.rot * k);
+      drawBlock(-size / 2, -size / 2, size, p.color, { glow: 14 * t });
+      ctx.restore();
+    }
+
+    // particles
+    for (const p of state.particles) {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = rgb(p.color);
+      ctx.beginPath();
+      ctx.arc(px(p.x) + cell / 2, py(p.y) + cell / 2, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // score popups
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 ${Math.max(13, cell * 0.55)}px ui-sans-serif, system-ui, sans-serif`;
+    for (const p of state.popups) {
+      const t = clamp((now - p.born) / 700, 0, 1);
+      if (t >= 1) continue;
+      ctx.globalAlpha = 1 - t * t;
+      ctx.fillStyle = rgb(PALETTE[p.color].rgb);
+      ctx.fillText(p.text, px(p.x) + cell / 2, py(p.y) + cell / 2 - 14 * t);
+    }
+    ctx.globalAlpha = 1;
+
+    // group badge
+    if (state.hover.length >= 2) {
+      const n = state.hover.length;
+      const cx = state.hover.reduce((s, g) => s + g.c, 0) / n;
+      const cy = state.hover.reduce((s, g) => s + g.r, 0) / n;
+      const label = `${n} · ${n * (n - 1)}`;
+      ctx.font = `600 ${Math.max(11, cell * 0.42)}px ui-sans-serif, system-ui, sans-serif`;
+      const w = ctx.measureText(label).width + 14;
+      const bx = clamp(px(cx) + cell / 2 - w / 2, 4, cv.width / dpr - w - 4);
+      const by = clamp(py(cy) + cell / 2 - cell * 0.9, 4, cv.height / dpr - 24);
+      ctx.fillStyle = 'rgba(8,12,18,.85)';
+      roundRect(bx, by, w, 20, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#e7ecf3';
+      ctx.fillText(label, bx + w / 2, by + 10);
+    }
+  }
+
+  function step(now) {
+    if (state.phase === 'pop' && now - state.tPop >= POP_MS) {
+      state.popping = [];
+      collapse();
+      state.phase = 'settle';
+      state.tSettle = now;
+      if (blocksLeft() === 0) { endGame(); }
+      else if (largestGroup().length < 2) { endGame(); }
+    } else if (state.phase === 'settle' && now - state.tSettle >= SETTLE_MS) {
+      state.phase = 'idle';
+      for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+        const b = state.grid[r][c]; if (b) { b.dx = 0; b.dy = 0; b.scale = 1; b.alpha = 1; }
+      }
+    }
+
+    for (const p of state.particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.004; p.life -= p.decay;
+    }
+    state.particles = state.particles.filter(p => p.life > 0);
+    state.popups = state.popups.filter(p => now - p.born < 700);
+
+    render(now);
+    requestAnimationFrame(step);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Input
+   * ------------------------------------------------------------------ */
+  function cellAt(clientX, clientY) {
+    const rect = cv.getBoundingClientRect();
+    const x = clientX - rect.left - pad, y = clientY - rect.top - pad;
+    const c = Math.floor(x / cell), r = Math.floor(y / cell);
+    if (r < 0 || c < 0 || r >= cfg.rows || c >= cfg.cols) return null;
+    return { r, c };
+  }
+
+  cv.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
+    const p = cellAt(e.clientX, e.clientY);
+    state.hover = p ? findGroup(p.r, p.c) : [];
+    updateHintline();
+  });
+  cv.addEventListener('pointerleave', () => { state.hover = []; updateHintline(); });
+
+  cv.addEventListener('pointerdown', e => {
+    const p = cellAt(e.clientX, e.clientY);
+    if (!p) return;
+    const g = findGroup(p.r, p.c);
+    if (g.length >= 2 && state.phase === 'idle' && !state.over) {
+      state.hover = g;
+      popGroup(g);
+      updateHintline();
+    }
+  });
+
+  function showHint() {
+    const g = largestGroup();
+    if (g.length < 2) return;
+    state.hint = g;
+    state.hover = g;
+    updateHintline(`Best group: ${g.length} blocks → ${g.length * (g.length - 1)} points`);
+    tone(660, .12, .1, 'sine');
+    clearTimeout(showHint._t);
+    showHint._t = setTimeout(() => { state.hint = null; }, 1600);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * HUD
+   * ------------------------------------------------------------------ */
+  function flash(node) { node.classList.remove('flash'); void node.offsetWidth; node.classList.add('flash'); }
+
+  function syncHud() {
+    el.score.textContent = state.score;
+    el.best.textContent = state.best;
+    el.moves.textContent = state.moves;
+    el.left.textContent = blocksLeft();
+    flash(el.score);
+  }
+
+  function updateHintline(custom) {
+    if (custom) { el.hintline.innerHTML = custom; return; }
+    if (state.hover.length >= 2) {
+      const n = state.hover.length;
+      const name = PALETTE[state.hover[0].color].name;
+      el.hintline.innerHTML = `<b>${n}</b> ${name} blocks → <b>${n * (n - 1)}</b> points`;
+    } else {
+      el.hintline.innerHTML = 'Click a group of <b>2+</b> touching blocks to pop it.';
+    }
+  }
+
+  function hideOverlay() { el.overlay.classList.remove('show'); }
+
+  /* ------------------------------------------------------------------ *
+   * Logo
+   * ------------------------------------------------------------------ */
+  function drawLogo() {
+    el.logo.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+      const s = document.createElement('i');
+      s.style.background = PALETTE[i % cfg.colors].hex;
+      s.style.opacity = i === 4 ? '1' : '.75';
+      el.logo.appendChild(s);
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Buttons & keys
+   * ------------------------------------------------------------------ */
+  document.getElementById('btnNew').onclick = () => { newGame(); };
+  el.ovBtn.onclick = () => { newGame(); };
+  el.undo.onclick = () => undo();
+  document.getElementById('btnHint').onclick = showHint;
+  document.getElementById('btnShuffle').onclick = shuffle;
+  document.getElementById('btnSound').onclick = (e) => {
+    state.sound = !state.sound;
+    e.target.textContent = state.sound ? 'Sound on' : 'Sound off';
+    e.target.classList.toggle('toggled', state.sound);
+    if (state.sound) tone(440, .12, .12, 'sine');
+  };
+  document.getElementById('selSize').onchange = (e) => {
+    const [c, r] = e.target.value.split(',').map(Number);
+    cfg.cols = c; cfg.rows = r; layout(); drawLogo(); newGame(false);
+  };
+  document.getElementById('selColors').onchange = (e) => {
+    cfg.colors = Number(e.target.value); drawLogo(); newGame(false);
+  };
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, select, textarea')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'n') newGame();
+    else if (k === 'u') undo();
+    else if (k === 'h') showHint();
+    else if (k === 's') shuffle();
+    else if (k === 'm') document.getElementById('btnSound').click();
+  });
+
+  window.addEventListener('resize', layout);
+
+  /* ------------------------------------------------------------------ *
+   * Go
+   * ------------------------------------------------------------------ */
+  drawLogo();
+  layout();
+  newGame();
+  requestAnimationFrame(step);
+
+  // Test/debug hook: lets automated checks inspect the board without reading pixels.
+  window.samegame = { state, cfg, popGroup, findGroup, largestGroup, blocksLeft, newGame, undo, shuffle, showHint };
+})();
+</script>
+</body>
+</html>

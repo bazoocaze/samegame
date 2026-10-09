@@ -1,0 +1,8 @@
+[project]
+name = "samegame"
+version = "1.0.0"
+description = "Single-file SameGame clone + reusable browser test scripts"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.45",
+]
