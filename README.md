@@ -1,6 +1,7 @@
 # SameGame
 
 Clone do SameGame (Clickomania) em **um único arquivo HTML**, sem dependências.
+MIT licensed — [live demo](https://bazoocaze.github.io/samegame/).
 
 ```
 same_game/
@@ -53,3 +54,13 @@ Notas do harness:
 
 Bugs encontrados pelos testes: `rgb()` recebia entradas `{name, hex}` do palette (blocos cinzas)
 e `endGame()` não disparava quando só restavam grupos de tamanho 1.
+
+## Licença
+
+[MIT](LICENSE) — o código é seu, use, modifique e redistribua livremente.
+
+As mecânicas do jogo (grupo de 2+, gravidade, `n × (n − 1)`, bônus por tabuleiro limpo) são do
+domínio público como regras de jogo — o que a licença cobre é a implementação original deste repo.
+O nome do gênero é conhecido como SameGame / Clickomania / Tapujito / Same Color.
+
+Live: https://bazoocaze.github.io/samegame/
