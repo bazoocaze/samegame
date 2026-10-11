@@ -1,66 +1,72 @@
 # SameGame
 
-Clone do SameGame (Clickomania) em **um único arquivo HTML**, sem dependências.
+SameGame (Clickomania) clone in **a single HTML file**, no dependencies.
 MIT licensed — [live demo](https://bazoocaze.github.io/samegame/).
 
 ```
-same_game/
-├── index.html            # o jogo
+samegame/
+├── index.html            # the game
+├── AGENTS.md             # working notes for agents
 ├── pyproject.toml        # playwright (uv venv)
 ├── scripts/
-│   ├── play.py           # playthrough automatizado (imprime o tabuleiro)
-│   └── screenshot.py     # captura de tela do jogo
+│   ├── play.py           # automated playthrough (prints the board)
+│   ├── screenshot.py     # captures a screenshot of the game
+│   └── cpu_measure.py    # CPU cost of the render loop
 └── tests/
-    ├── browser_lib.py    # helpers reaproveitáveis (Chrome via CDP)
-    ├── test_game.py      # teste black-box no browser
-    ├── logic_test.js     # teste de lógica determinístico (sem browser)
+    ├── browser_lib.py    # reusable helpers (Chrome over CDP)
+    ├── test_game.py      # black-box browser test
+    ├── logic_test.js     # deterministic logic test (no browser)
     └── screenshot.png
 ```
 
-## Regras
+## Rules
 
-- Clique num grupo de **2+ blocos** da mesma cor (adjacência orthogonal) para removê-lo.
-- Blocos caem; colunas vazias deslizam para a esquerda.
-- Pontos por grupo de `n`: `n × (n − 1)`. Tabuleiro limpo: `+2000`.
-- Recorde por tamanho/cores fica em `localStorage`.
+- Click a group of **2+ same-colour blocks** (orthogonal adjacency) to remove it.
+- Blocks fall down; empty columns slide left.
+- Score for a group of `n`: `n × (n − 1)`. Clearing the board: `+2000`.
+- Best score per size/colour count is kept in `localStorage`.
 
-Extras: undo, hint (melhor grupo), shuffle, som (WebAudio), hover com badge de pontos,
-animações de pop/queda, teclado `N U H S M`.
+Features: undo, hint (best group), shuffle, sound (WebAudio), hover with a points badge,
+pop/fall animations, keyboard `N U H S M`.
 
-## Rodar
+The render loop is **render-on-change**: `render()` runs only when something actually changed
+(a click, a hover change, a live pop/settle/particle/popup, a resize). An idle board draws nothing.
 
-Abra `index.html` no navegador.
+## Run
 
-## Testes
+Open `index.html` in a browser.
 
-Usa o Chrome já instalado via CDP (skill `browser-control`) — não baixa navegador.
+## Tests
+
+Uses the already-installed Chrome over CDP — no browser download.
 
 ```bash
 uv venv && uv pip install playwright
 
-node tests/logic_test.js          # invariants de gravidade/colunas, score, undo, shuffle
-uv run python tests/test_game.py  # joga o jogo pelo browser e confere HUD + render + persistência
+node tests/logic_test.js          # gravity/column invariants, score, undo, shuffle
+uv run python tests/test_game.py  # plays the game in the browser, checks HUD + render + persistence
 uv run python scripts/play.py --moves 40 --delay 0.4
 uv run python scripts/screenshot.py --moves 14 --out tests/screenshot.png
+uv run python scripts/cpu_measure.py --window 4 --experiments
 ```
 
-Notas do harness:
-- `tests/browser_lib.py` expõe `open_game`, `read_state`, `read_grid`, `hud`, `click_cell`,
-  `cell_geometry`, `wait_idle`, `settle`, `largest_group`, `check_invariants`.
-- `wait_idle`/`settle` dormem em vez de fazer polling apertado (não martela a CPU).
-- O jogo expõe `window.samegame` (hook de teste) para ler o estado sem amostrar pixels.
-- A aba precisa estar em foreground (`bring_to_front`), senão o Chrome throttles `requestAnimationFrame`
-  e o loop de render para.
+Harness notes:
 
-Bugs encontrados pelos testes: `rgb()` recebia entradas `{name, hex}` do palette (blocos cinzas)
-e `endGame()` não disparava quando só restavam grupos de tamanho 1.
+- `tests/browser_lib.py` exposes `open_game`, `read_state`, `read_grid`, `hud`, `click_cell`,
+  `cell_geometry`, `wait_idle`, `wait_quiet`, `settle`, `largest_group`, `check_invariants`.
+- `wait_idle`/`settle`/`wait_quiet` sleep instead of polling tightly.
+- The game exposes `window.samegame` (test hook) so state can be read without sampling pixels.
+- Pixel checks need the pointer off the board and the board quiet — a hover highlight, a live
+  particle, or the group badge can sit on a sample point.
+- The tab must be foregrounded (`bring_to_front`), otherwise Chrome throttles
+  `requestAnimationFrame` and the render loop stalls.
 
-## Licença
+## License
 
-[MIT](LICENSE) — o código é seu, use, modifique e redistribua livremente.
+[MIT](LICENSE) — the code is yours, use, modify and redistribute freely.
 
-As mecânicas do jogo (grupo de 2+, gravidade, `n × (n − 1)`, bônus por tabuleiro limpo) são do
-domínio público como regras de jogo — o que a licença cobre é a implementação original deste repo.
-O nome do gênero é conhecido como SameGame / Clickomania / Tapujito / Same Color.
+The game mechanics (groups of 2+, gravity, `n × (n − 1)`, clear bonus) are public domain as game
+rules — the license covers this repo's original implementation. The genre is known as
+SameGame / Clickomania / Tapujito / Same Color.
 
 Live: https://bazoocaze.github.io/samegame/
