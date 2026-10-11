@@ -87,7 +87,10 @@ STATE = """() => {
   const grid = g.state.grid.map(row => row.map(c => c ? c.color : null));
   return { grid, cols: g.cfg.cols, rows: g.cfg.rows, phase: g.state.phase,
            score: g.state.score, moves: g.state.moves, over: g.state.over,
-           blocks: g.blocksLeft() };
+           blocks: g.blocksLeft(),
+           anim: { particles: g.state.particles.length, popups: g.state.popups.length,
+                   popping: g.state.popping.length },
+           hover: g.state.hover.length, hint: !!g.state.hint };
 }"""
 
 
@@ -103,6 +106,23 @@ def wait_idle(page, timeout_ms=6000, poll_ms=120):
     while deadline > 0:
         s = read_state(page)
         if s["phase"] == "idle":
+            return s
+        page.wait_for_timeout(poll_ms)
+        deadline -= poll_ms
+    return read_state(page)
+
+
+def wait_quiet(page, timeout_ms=6000, poll_ms=120):
+    """Wait until the board is idle *and* nothing is still being drawn: no live
+    particles, popups or popping blocks, no hover/hint highlight.
+    Pixel sampling is only meaningful then — a particle sitting on a sample point
+    reads as a colour that matches no palette entry."""
+    deadline = timeout_ms
+    while deadline > 0:
+        s = read_state(page)
+        a = s["anim"]
+        if s["phase"] == "idle" and not (a["particles"] or a["popups"] or a["popping"]) \
+                and not s["hover"] and not s["hint"]:
             return s
         page.wait_for_timeout(poll_ms)
         deadline -= poll_ms

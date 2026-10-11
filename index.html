@@ -342,8 +342,10 @@
     state.tSettle = performance.now();
     state.best = loadBest();
     state.over = false;
+    lastHover = null;
     hideOverlay();
     syncHud();
+    markDirty();
   }
 
   function findGroup(r, c) {
@@ -444,9 +446,11 @@
     state.score = s.score; state.moves = s.moves; state.over = false;
     state.hover = []; state.hint = null; state.popping = [];
     state.phase = 'settle'; state.tSettle = performance.now();
+    lastHover = null;
     hideOverlay(); syncHud();
     tone(300, .1, .12, 'sine');
     el.undo.disabled = state.undo.length === 0;
+    markDirty();
   }
 
   function shuffle() {
@@ -466,6 +470,8 @@
     state.over = false; hideOverlay();
     tone(180, .18, .1, 'triangle');
     syncHud();
+    lastHover = null;
+    markDirty();
     if (largestGroup().length < 2) { endGame(); }
   }
 
@@ -495,8 +501,10 @@
     burst(cx, cy, group[0].color, Math.min(n, 14));
 
     state.phase = 'pop'; state.tPop = performance.now();
+    lastHover = null;
     tone(180 + n * 34, .16, .16, 'triangle');
     syncHud();
+    markDirty();
   }
 
   function burst(x, y, colorIdx, count) {
@@ -567,6 +575,12 @@
    * ------------------------------------------------------------------ */
   let cell = 34, pad = 12, dpr = 1;
 
+  /* Render-on-change. The board only needs a frame when something actually
+   * moved: a click, a hover change, a live animation (pop/settle/particles/
+   * popups), or a resize. Idle frames cost nothing. */
+  let dirty = true;
+  const markDirty = () => { dirty = true; };
+
   function layout() {
     const wrap = document.querySelector('.board-wrap');
     const availW = wrap.clientWidth - 28;
@@ -578,6 +592,7 @@
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    markDirty();   // resizing the canvas clears it, so the next frame must redraw
   }
 
   const px = (c, off = 0) => pad + (c + off) * cell;
@@ -728,6 +743,7 @@
       collapse();
       state.phase = 'settle';
       state.tSettle = now;
+      markDirty();
       if (blocksLeft() === 0) { endGame(); }
       else if (largestGroup().length < 2) { endGame(); }
     } else if (state.phase === 'settle' && now - state.tSettle >= SETTLE_MS) {
@@ -735,15 +751,29 @@
       for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
         const b = state.grid[r][c]; if (b) { b.dx = 0; b.dy = 0; b.scale = 1; b.alpha = 1; }
       }
+      markDirty();   // last frame of the animation: the board is now at rest
     }
 
-    for (const p of state.particles) {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.004; p.life -= p.decay;
+    // Idle guard: when nothing is in motion there is nothing to advance, and
+    // no allocation either (filter() would build a new empty array every frame).
+    if (state.particles.length) {
+      for (const p of state.particles) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.004; p.life -= p.decay;
+      }
+      state.particles = state.particles.filter(p => p.life > 0);
+      markDirty();
     }
-    state.particles = state.particles.filter(p => p.life > 0);
-    state.popups = state.popups.filter(p => now - p.born < 700);
+    if (state.popups.length) {
+      state.popups = state.popups.filter(p => now - p.born < 700);
+      markDirty();
+    }
 
-    render(now);
+    // Anything still animating (phase transitions, pop, particles, popups) or
+    // pulsing (hover/hint) needs its frame.
+    if (state.phase !== 'idle' || state.popping.length || state.particles.length ||
+        state.popups.length || state.hover.length || state.hint) markDirty();
+
+    if (dirty) { render(now); dirty = false; }
     requestAnimationFrame(step);
   }
 
@@ -758,13 +788,26 @@
     return { r, c };
   }
 
+  let lastHover = null;   // last cell the pointer was over: a move that lands on
+                          // the same cell recomputes nothing and renders nothing
+  const sameCell = (a, b) => (a === b) || (!!a && !!b && a.r === b.r && a.c === b.c);
+
   cv.addEventListener('pointermove', e => {
     if (e.pointerType === 'touch') return;
     const p = cellAt(e.clientX, e.clientY);
+    if (sameCell(lastHover, p)) return;
+    lastHover = p;
     state.hover = p ? findGroup(p.r, p.c) : [];
+    markDirty();
     updateHintline();
   });
-  cv.addEventListener('pointerleave', () => { state.hover = []; updateHintline(); });
+  cv.addEventListener('pointerleave', () => {
+    if (!lastHover && !state.hover.length) return;
+    lastHover = null;
+    state.hover = [];
+    markDirty();
+    updateHintline();
+  });
 
   cv.addEventListener('pointerdown', e => {
     const p = cellAt(e.clientX, e.clientY);
@@ -782,10 +825,12 @@
     if (g.length < 2) return;
     state.hint = g;
     state.hover = g;
+    lastHover = null;
     updateHintline(`Best group: ${g.length} blocks → ${g.length * (g.length - 1)} points`);
     tone(660, .12, .1, 'sine');
+    markDirty();
     clearTimeout(showHint._t);
-    showHint._t = setTimeout(() => { state.hint = null; }, 1600);
+    showHint._t = setTimeout(() => { state.hint = null; markDirty(); }, 1600);
   }
 
   /* ------------------------------------------------------------------ *
@@ -870,7 +915,7 @@
   requestAnimationFrame(step);
 
   // Test/debug hook: lets automated checks inspect the board without reading pixels.
-  window.samegame = { state, cfg, popGroup, findGroup, largestGroup, blocksLeft, newGame, undo, shuffle, showHint };
+  window.samegame = { state, cfg, popGroup, findGroup, largestGroup, blocksLeft, newGame, undo, shuffle, showHint, markDirty };
 })();
 </script>
 </body>

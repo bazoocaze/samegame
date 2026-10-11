@@ -4,8 +4,9 @@
     uv run python tests/test_game.py
 
 Checks: scoring n*(n-1), gravity, column compaction, end-of-game overlay,
-undo, shuffle, hint, best-score persistence, and that the rendered canvas
-matches the game state. Sleeps between reads keep the CPU idle.
+undo, shuffle, hint, best-score persistence, that the rendered canvas
+matches the game state, and that an idle board triggers no render at all.
+Sleeps between reads keep the CPU idle.
 """
 import sys
 import time
@@ -13,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from browser_lib import (  # noqa: E402
-    open_game, read_state, read_grid, hud, click_cell, settle, wait_idle, cell_geometry,
+    open_game, read_state, read_grid, hud, click_cell, settle, wait_idle, wait_quiet, cell_geometry,
     largest_group, check_invariants, show_grid,
 )
 
@@ -105,7 +106,12 @@ def main():
         fails.append(str(e))
     print("shuffle: multiset preserved")
 
-    # the canvas must render exactly what the game state holds
+    # the canvas must render exactly what the game state holds.
+    # The pointer must be off the board: a hover highlight, a live particle, or the
+    # group badge (drawn over the group centroid) can sit on a sample point and read
+    # as a colour that matches no palette entry.
+    page.mouse.move(0, 0)
+    s = wait_quiet(page)
     px = read_grid(page)
     mismatch = sum(
         1 for r in range(rows) for c in range(cols)
@@ -114,6 +120,32 @@ def main():
     if mismatch:
         fails.append(f"render mismatch: {mismatch} cells differ from state")
     print(f"render matches state: {not mismatch}")
+
+    # render-on-change: an idle board must draw nothing at all.
+    # clearRect runs once per render(), so counting it counts rendered frames.
+    page.evaluate("""() => {
+      const ctx = document.getElementById('board').getContext('2d');
+      const orig = ctx.clearRect;
+      window.__renders = 0;
+      ctx.clearRect = function (...a) { window.__renders++; return orig.apply(this, a); };
+    }""")
+    page.mouse.move(0, 0)  # pointer off the board, so no hover animation to draw
+    s = wait_quiet(page)   # nothing left to draw: no particles, popups, hint, hover
+    page.evaluate("() => { window.__renders = 0; }")
+    page.wait_for_timeout(1000)
+    idle_renders = page.evaluate("() => window.__renders")
+    if idle_renders:
+        fails.append(f"idle board rendered {idle_renders} times in 1s (expected 0)")
+    g = largest_group(s["grid"])
+    if len(g) >= 2:
+        click_cell(page, g[0][0], g[0][1], geom)
+        page.wait_for_timeout(600)
+        after = page.evaluate("() => window.__renders")
+        if after <= idle_renders:
+            fails.append("a move produced no render")
+        print(f"render-on-change: {idle_renders} renders in 1s quiet idle, {after} after a move")
+    else:
+        print(f"render-on-change: {idle_renders} renders in 1s quiet idle (no playable group to click)")
 
     # best score persists across a reload
     best_before = hud(page)["best"]
