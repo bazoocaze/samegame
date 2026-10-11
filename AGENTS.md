@@ -7,6 +7,34 @@ Working notes for this repo. English. Facts about the current state, not history
 Single-file browser game (`index.html`, no dependencies) + Python/Node test and measurement scripts.
 Everything in the game lives in one IIFE; the DOM is a static shell and the board is a `<canvas>`.
 
+## Layout
+
+```
+samegame/
+├── index.html            # the game
+├── AGENTS.md             # working notes for agents
+├── README.md             # player-facing, keep it non-technical
+├── screenshot.png        # used by README
+├── LICENSE
+├── pyproject.toml        # playwright (uv venv)
+├── scripts/
+│   ├── play.py           # automated playthrough (prints the board)
+│   ├── screenshot.py     # captures a screenshot of the game
+│   └── cpu_measure.py    # CPU cost of the render loop
+└── tests/
+    ├── browser_lib.py    # reusable helpers (Chrome over CDP)
+    ├── test_game.py      # black-box browser test
+    └── logic_test.js     # deterministic logic test (no browser)
+```
+
+## Setup
+
+Uses the already-installed Chrome over CDP — no browser download.
+
+```bash
+uv venv && uv pip install playwright
+```
+
 ## Commands
 
 ```bash
@@ -14,7 +42,8 @@ node tests/logic_test.js                          # deterministic logic test, DO
 uv run python tests/test_game.py                  # black-box browser test
 uv run python scripts/play.py --moves 40 --delay 0.4
 uv run python scripts/screenshot.py --moves 14 --out tests/screenshot.png
-uv run python scripts/cpu_measure.py              # headful, 6 s windows
+uv run python scripts/cpu_measure.py              # headful, 6 s windows (README screenshot: board only, pointer off canvas)
+uv run python scripts/cpu_measure.py --headless
 uv run python scripts/cpu_measure.py --headless
 uv run python scripts/cpu_measure.py --window 4 --experiments
 ```
