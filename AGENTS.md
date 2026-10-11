@@ -41,7 +41,7 @@ uv venv && uv pip install playwright
 node tests/logic_test.js                          # deterministic logic test, DOM stubbed
 uv run python tests/test_game.py                  # black-box browser test
 uv run python scripts/play.py --moves 40 --delay 0.4
-uv run python scripts/screenshot.py --moves 14 --out tests/screenshot.png
+uv run python scripts/screenshot.py --moves 5 --out screenshot.png   # the image used by README.md; board only (--full for the whole page)
 uv run python scripts/cpu_measure.py              # headful, 6 s windows (README screenshot: board only, pointer off canvas)
 uv run python scripts/cpu_measure.py --headless
 uv run python scripts/cpu_measure.py --headless
@@ -102,6 +102,8 @@ Approaches already measured and rejected: memoizing `createLinearGradient` by ar
 - Pixel sampling (`read_grid`) is only meaningful when the board is quiet and the pointer is off the
   canvas: a hover highlight, a live particle, or the group badge (drawn over the group centroid) can
   cover a sample point and read as a colour that matches no palette entry. Use `wait_quiet()`.
+- `read_grid` skips pixels with alpha < 200: the ghost grid and the board backdrop are translucent
+  white, and a light palette entry can fall inside the nearest-colour threshold and read as a block.
 - `document.visibilityState` can report `visible` while rAF is at 0 fps (occluded tab). Tests must
   foreground the tab.
 

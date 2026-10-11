@@ -18,7 +18,7 @@ TAB = "samegame"
 sys.path.insert(0, str(Path.home() / ".agents/skills/browser-control"))
 from lib import generic_open  # noqa: E402
 
-PALETTE = ["#ff5f6d", "#f7b32b", "#3ddc97", "#4aa8ff", "#b388ff", "#2fd4c8"]
+PALETTE = ["#ff5f6d", "#f7b32b", "#6fbf3a", "#4a6cf5", "#e8a6ff", "#14cfc0"]
 
 READ_GRID = """() => {
   const c = document.getElementById('board');
@@ -46,6 +46,7 @@ READ_GRID = """() => {
       const x = Math.round((pad + (c2 + 0.5) * cell) * dpr);
       const y = Math.round((pad + (r + 0.5) * cell) * dpr);
       const d = ctx.getImageData(x, y, 1, 1).data;
+      if (d[3] < 200) { row.push(null); continue; }   // translucent pixel = empty cell, not a block
       row.push(nearest(d[0], d[1], d[2]));
     }
     grid.push(row);

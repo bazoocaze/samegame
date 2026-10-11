@@ -22,6 +22,7 @@ def main():
     ap.add_argument("--moves", type=int, default=12)
     ap.add_argument("--delay", type=float, default=0.35)
     ap.add_argument("--name", default="samegame-shot")
+    ap.add_argument("--full", action="store_true", help="capture the whole page instead of only the board")
     args = ap.parse_args()
 
     page = open_game(name=args.name)
@@ -44,7 +45,10 @@ def main():
                         geom["rect"]["top"] + geom["pad"] + (r + 0.5) * geom["cell"])
         time.sleep(0.3)
 
-    page.screenshot(path=args.out)
+    if args.full:
+        page.screenshot(path=args.out)
+    else:
+        page.locator("#board").screenshot(path=args.out)
     print(f"saved {args.out} (score {s['score']}, blocks {s['blocks']})")
     return 0
 
