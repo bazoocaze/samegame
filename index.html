@@ -182,6 +182,9 @@
     .app { grid-template-columns: 1fr; padding: 14px; }
     aside.panel { order: 2; }
     .board-wrap { order: 1; }
+    /* Keep the header wrappable so a long title can never force the grid
+       column wider than a narrow portrait screen (mobile fit-zoom). */
+    header.title { flex-wrap: wrap; gap: 8px; }
   }
 </style>
 </head>
@@ -189,7 +192,7 @@
 <div class="app">
   <header class="title">
     <div class="logo" id="logo"></div>
-    <h1>SameGame <span>· clickomania</span></h1>
+    <h1>SameGame</h1>
   </header>
 
   <div class="board-wrap">
@@ -586,8 +589,14 @@
 
   function layout() {
     const wrap = document.querySelector('.board-wrap');
-    const availW = wrap.clientWidth - 28;
-    const availH = Math.max(220, window.innerHeight - 230);
+    // Reserve the wrap's padding (28) AND the board's own padding (pad*2):
+    // sizing cell over availW alone made the canvas ~22px wider than its
+    // container, so the grid column inflated and overflowed narrow portrait
+    // screens (Android fit-zoomed the page). The viewport cap distrusts a
+    // wrapper that an earlier overflow already inflated.
+    const docW = ((document.documentElement || {}).clientWidth) || 0;
+    const availW = Math.min(wrap.clientWidth, docW > 0 ? docW - 30 : Infinity) - 28 - pad * 2;
+    const availH = Math.max(220, window.innerHeight - 230) - pad * 2;
     cell = Math.floor(Math.min(availW / cfg.cols, availH / cfg.rows));
     cell = clamp(cell, 16, 44);
     dpr = Math.min(2, window.devicePixelRatio || 1);

@@ -110,6 +110,14 @@ extracts only the first script block, so keep it that way.
 - Icons are generated with PIL (3×3 palette grid, maskable keeps content inside
   the 80% safe zone). Regenerate at 1024 and downscale with LANCZOS.
 
+## Board sizing
+
+`layout()` must never let the canvas be wider than its container. `cell` is sized from
+`availW − pad*2` and the width is capped at the viewport, because `.board-wrap` is a grid item:
+an oversized canvas raises the column's min-content, the column inflates past the viewport, and
+Android Chrome fit-zooms the whole page (looks "slightly zoomed in" in portrait). Keep
+`header.title` wrappable for the same reason — a long title used to do this too.
+
 ## Test hooks and constraints
 
 - `window.samegame` exposes `state, cfg, popGroup, findGroup, largestGroup, blocksLeft, newGame,
