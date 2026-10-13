@@ -179,9 +179,9 @@
   .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
   @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; padding: 14px; }
+    .app { grid-template-columns: 1fr; padding: 4px; }
     aside.panel { order: 2; }
-    .board-wrap { order: 1; }
+    .board-wrap { order: 1; padding: 4px; }
     /* Keep the header wrappable so a long title can never force the grid
        column wider than a narrow portrait screen (mobile fit-zoom). */
     header.title { flex-wrap: wrap; gap: 8px; }
@@ -579,7 +579,7 @@
   /* ------------------------------------------------------------------ *
    * Layout / rendering
    * ------------------------------------------------------------------ */
-  let cell = 34, pad = 12, dpr = 1;
+  let cell = 34, pad = 4, dpr = 1;
 
   /* Render-on-change. The board only needs a frame when something actually
    * moved: a click, a hover change, a live animation (pop/settle/particles/
@@ -589,13 +589,15 @@
 
   function layout() {
     const wrap = document.querySelector('.board-wrap');
-    // Reserve the wrap's padding (28) AND the board's own padding (pad*2):
-    // sizing cell over availW alone made the canvas ~22px wider than its
-    // container, so the grid column inflated and overflowed narrow portrait
-    // screens (Android fit-zoomed the page). The viewport cap distrusts a
-    // wrapper that an earlier overflow already inflated.
+    // Reserve the wrapper's own padding and the board's (pad*2): sizing cell
+    // over the wrapper width alone made the canvas wider than its container,
+    // which inflated the grid column and made mobile browsers fit-zoom the
+    // page. The viewport cap distrusts a wrapper an earlier overflow inflated.
+    // (getComputedStyle is absent in the DOM stub tests/logic_test.js builds.)
+    const cs = typeof getComputedStyle === 'function' ? getComputedStyle(wrap) : null;
+    const wrapPad = cs ? (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) : 28;
     const docW = ((document.documentElement || {}).clientWidth) || 0;
-    const availW = Math.min(wrap.clientWidth, docW > 0 ? docW - 30 : Infinity) - 28 - pad * 2;
+    const availW = Math.min(wrap.clientWidth, docW > 0 ? docW - 16 : Infinity) - wrapPad - pad * 2;
     const availH = Math.max(220, window.innerHeight - 230) - pad * 2;
     cell = Math.floor(Math.min(availW / cfg.cols, availH / cfg.rows));
     cell = clamp(cell, 16, 44);

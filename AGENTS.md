@@ -119,6 +119,10 @@ past the viewport, and Chrome expands the layout viewport and fit-zooms the page
 in portrait" bug). A phone with a large Android display-size setting reports only ~280–310 CSS px,
 so test narrow, not just 360. Keep `header.title` wrappable for the same reason.
 
+`pad` (the board's inset, currently 4) is mirrored as `PAD` in `tests/browser_lib.py` — `read_grid`
+samples cell centres from it, so a mismatch reads the wrong pixels. Mobile paddings are deliberately
+tight (4px on `.app` and `.board-wrap`) to give the board the lateral room.
+
 ## Test hooks and constraints
 
 - `window.samegame` exposes `state, cfg, popGroup, findGroup, largestGroup, blocksLeft, newGame,

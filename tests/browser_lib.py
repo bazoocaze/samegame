@@ -19,12 +19,14 @@ sys.path.insert(0, str(Path.home() / ".agents/skills/browser-control"))
 from lib import generic_open  # noqa: E402
 
 PALETTE = ["#ff5f6d", "#f7b32b", "#6fbf3a", "#4a6cf5", "#e8a6ff", "#14cfc0"]
+# Board inset the game draws with — mirrors `pad` in index.html layout().
+PAD = 4
 
 READ_GRID = """() => {
   const c = document.getElementById('board');
   const ctx = c.getContext('2d');
   const w = parseFloat(c.style.width), h = parseFloat(c.style.height);
-  const pad = 12;
+  const pad = %s;
   const [cols, rows] = document.getElementById('selSize').value.split(',').map(Number);
   const cell = (w - pad * 2) / cols;
   const dpr = c.width / w;
@@ -52,7 +54,7 @@ READ_GRID = """() => {
     grid.push(row);
   }
   return { grid, cols, rows, cell, pad, dpr, cssW: w, cssH: h };
-}""" % (PALETTE,)
+}""" % (PAD, PALETTE)
 
 HUD = """() => ({
   score: document.getElementById('score').textContent,
@@ -164,7 +166,7 @@ def cell_geometry(page):
     cols, rows = page.evaluate(
         "() => document.getElementById('selSize').value.split(',').map(Number)"
     )
-    pad = 12
+    pad = PAD
     return {"pad": pad, "cell": (rect["width"] - pad * 2) / cols, "cols": cols, "rows": rows, "rect": rect}
 
 
