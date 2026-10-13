@@ -113,10 +113,11 @@ extracts only the first script block, so keep it that way.
 ## Board sizing
 
 `layout()` must never let the canvas be wider than its container. `cell` is sized from
-`availW − pad*2` and the width is capped at the viewport, because `.board-wrap` is a grid item:
-an oversized canvas raises the column's min-content, the column inflates past the viewport, and
-Android Chrome fit-zooms the whole page (looks "slightly zoomed in" in portrait). Keep
-`header.title` wrappable for the same reason — a long title used to do this too.
+`availW − pad*2`, the width is capped at the viewport, and **the 16px cell floor yields to the
+available width** — an oversized canvas raises the grid column's min-content, the column inflates
+past the viewport, and Chrome expands the layout viewport and fit-zooms the page (the "slight zoom
+in portrait" bug). A phone with a large Android display-size setting reports only ~280–310 CSS px,
+so test narrow, not just 360. Keep `header.title` wrappable for the same reason.
 
 ## Test hooks and constraints
 
