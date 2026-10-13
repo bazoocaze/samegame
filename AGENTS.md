@@ -11,7 +11,10 @@ Everything in the game lives in one IIFE; the DOM is a static shell and the boar
 
 ```
 samegame/
-├── index.html            # the game
+├── index.html            # the game (+ PWA links at the end of body)
+├── manifest.webmanifest  # web app manifest (install prompt)
+├── sw.js                 # service worker — offline support
+├── icons/                # icon-192.png, icon-512.png, icon-maskable-512.png
 ├── AGENTS.md             # working notes for agents
 ├── README.md             # player-facing, keep it non-technical
 ├── screenshot.png        # used by README
@@ -90,6 +93,22 @@ the numbers. Always state which mode a number came from.
 Approaches already measured and rejected: memoizing `createLinearGradient` by arguments made it
 **worse** (57% headless) — the cost is the raster of each fill, not gradient allocation. Zeroing
 `shadowBlur` does nothing at idle. DPR is already capped at 2.
+
+## PWA
+
+Installable + offline. `index.html` links the manifest and registers `sw.js`
+from a **separate** `<script>` block at the end of body — `tests/logic_test.js`
+extracts only the first script block, so keep it that way.
+
+- Registration is guarded by `/^https?:$/.test(location.protocol)`: `file://`
+  (browser tests) and non-secure contexts skip it; the game still works there.
+- `sw.js` is network-first for navigations (fresh page online, cached shell
+  offline, cache refreshed on every successful load) and cache-first for other
+  same-origin assets. The browser reinstalls it automatically when its bytes
+  change — no version bump needed; the `CACHE` name only matters when you want
+  to force clients to drop old cached entries.
+- Icons are generated with PIL (3×3 palette grid, maskable keeps content inside
+  the 80% safe zone). Regenerate at 1024 and downscale with LANCZOS.
 
 ## Test hooks and constraints
 
