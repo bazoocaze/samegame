@@ -599,6 +599,11 @@
     const availH = Math.max(220, window.innerHeight - 230) - pad * 2;
     cell = Math.floor(Math.min(availW / cfg.cols, availH / cfg.rows));
     cell = clamp(cell, 16, 44);
+    // The 16px floor must yield to the available width: a canvas wider than its
+    // container inflates the grid column, and mobile browsers answer a page
+    // wider than the viewport with a fit-zoom (narrow portrait screens with a
+    // large Android display-size setting report ~280-310 CSS px).
+    cell = Math.min(cell, Math.max(6, Math.floor(availW / cfg.cols)));
     dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = cfg.cols * cell + pad * 2, h = cfg.rows * cell + pad * 2;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
